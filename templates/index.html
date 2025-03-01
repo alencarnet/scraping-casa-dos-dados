@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Scraping Multioperador</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet" />
+    <style>
+        *,
+        ::after,
+        ::before {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 400;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #1e1e1e;
+            color: #ffffff;
+        }
+
+        .container {
+            margin: auto;
+            text-align: center;
+            padding: 24px;
+            width: 90%;
+            max-width: 448px;
+        }
+
+        .card {
+            padding: 24px;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.3);
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            color: #00b4d8;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .status {
+            font-size: 16px;
+            font-weight: 400;
+            color: #B3D9FF;
+            margin: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 6px;
+            margin: 20px auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background: #00b4d8;
+            width: 0%;
+            border-radius: 4px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        .info {
+            font-size: 14px;
+            font-weight: 400;
+            color: #B3D9FF;
+            margin: 10px;
+        }
+
+        .form-input {
+            border: 1px solid #555;
+            border-radius: 6px;
+            width: 100%;
+            font-size: 14px;
+            color: #ffffff;
+            font-weight: 400;
+            padding: 12px;
+            background-color: #333;
+            margin-bottom: 10px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #00b4d8;
+        }
+
+        button {
+            padding: 12px 20px;
+            margin: 5px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Poppins', sans-serif;
+            background-color: #00b4d8;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        button:hover {
+            background-color: #0096b7;
+        }
+
+        .pause-btn {
+            background-color: #ffca28;
+        }
+
+        .pause-btn:hover {
+            background-color: #e0b024;
+        }
+
+        .stop-btn {
+            background-color: #f44336;
+        }
+
+        .stop-btn:hover {
+            background-color: #d32f2f;
+        }
+
+        .download-btn {
+            background-color: #4CAF50;
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .download-btn:hover {
+            background-color: #45a049;
+        }
+
+        .download-btn:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        .aviso {
+            color: #B3D9FF;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media only screen and (max-width: 500px) {
+            body {
+                background-color: #1e1e1e;
+            }
+            .container {
+                width: 95%;
+                padding: 16px;
+            }
+            .card {
+                padding: 16px;
+                border: none;
+                box-shadow: none;
+            }
+            h1 {
+                font-size: 18px;
+            }
+            .status, .info {
+                font-size: 12px;
+            }
+            button {
+                padding: 10px 16px;
+                font-size: 12px;
+            }
+        }
+    </style>
+    <script>
+        let urlConfirmed = {{ 'true' if status.url else 'false' }};
+
+        function setUrl() {
+            const url = document.getElementById('urlInput').value.trim();
+            if (url) {
+                fetch('/set_url', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'url=' + encodeURIComponent(url)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        urlConfirmed = true;
+                        document.getElementById('urlForm').classList.add('hidden');
+                        document.getElementById('controls').classList.remove('hidden');
+                        updateStatus();
+                    } else {
+                        alert(data.message);
+                    }
+                });
+            } else {
+                alert("Por favor, insira uma URL válida.");
+            }
+        }
+
+        function updateStatus() {
+            if (urlConfirmed) {
+                fetch('/')
+                    .then(response => response.text())
+                    .then(html => {
+                        document.body.innerHTML = html;
+                        setTimeout(updateStatus, 1000);
+                    });
+            }
+        }
+
+        function resetUrl() {
+            urlConfirmed = false;
+            fetch('/reset', { method: 'POST' })
+                .then(() => {
+                    window.location.reload();
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlInput = document.getElementById('urlInput');
+            if (urlInput) {
+                urlInput.focus();
+                urlInput.addEventListener('paste', (e) => {
+                    const text = (e.clipboardData || window.clipboardData).getData('text');
+                    urlInput.value = text;
+                    e.preventDefault();
+                });
+            }
+        });
+
+        if (urlConfirmed) {
+            setTimeout(updateStatus, 1000);
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>Scraping Multioperador</h1>
+            <div id="urlForm" class="{% if status.url %}hidden{% endif %}">
+                <input type="text" id="urlInput" class="form-input" placeholder="Insira a URL a ser extraída" value="{{ status.url }}">
+                <p class="aviso">Use uma URL da Casa dos Dados ou similar para extração (ex.: https://casadosdados.com.br/solucao/cnpj?q=advogado)</p>
+                <button onclick="setUrl()">Confirmar URL</button>
+            </div>
+            <div id="controls" class="{% if not status.url %}hidden{% endif %}">
+                <div class="status">{{ status.mensagem }}</div>
+                <div class="progress-bar">
+                    <div class="progress" style="width: {{ status.progresso }}%;"></div>
+                </div>
+                <div class="info">
+                    Leads Extraídos: {{ status.leads }} / {{ status.total_leads }}<br>
+                    Total de Páginas: {{ status.total_paginas }}<br>
+                    Página Atual: {{ status.pagina }} / {{ status.total_paginas }}<br>
+                    Bloco Atual: {{ status.bloco }} / {{ status.total_blocos }}<br>
+                    {% if status.arquivo %}
+                        Último Arquivo disponível para download: {{ status.arquivo }} <button class="download-btn" onclick="window.location.href='/download'">Clique e baixe</button>
+                    {% else %}
+                        Último Arquivo disponível para download: Nenhum
+                    {% endif %}
+                </div>
+                <button onclick="fetch('/start', {method: 'POST'})" class="{% if status.iniciado %}hidden{% endif %}">Iniciar</button>
+                <button onclick="fetch('/start', {method: 'POST'})" class="{% if not status.iniciado %}hidden{% endif %}">Continuar</button>
+                <button class="pause-btn {% if not status.iniciado %}hidden{% endif %}" onclick="fetch('/pause', {method: 'POST'})">Pausar</button>
+                <button class="stop-btn {% if not status.iniciado %}hidden{% endif %}" onclick="fetch('/stop', {method: 'POST'})">Parar</button>
+                <button onclick="resetUrl()">Voltar</button>
+            </div>
+            <p class="aviso">Instruções: Clique em "Iniciar" para começar. "Continuar" para prosseguir após pausar. "Pausar" para pausar manualmente. "Parar" para encerrar e salvar o progresso. "Voltar" para inserir outra URL. Acesse em <a style="color: #B3D9FF;" href="http://127.0.0.1:5000">http://127.0.0.1:5000</a>.</p>
+        </div>
+    </div>
+</body>
+</html>
